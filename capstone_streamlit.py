@@ -1,20 +1,3 @@
-"""
-KnowBot — Streamlit UI
-========================
-Launch with:
-    streamlit run capstone_streamlit.py
-
-Requirements:
-    - GROQ_API_KEY set as environment variable
-    - All packages from requirements.txt installed
-
-UI flow:
-    1. User uploads one or more PDFs in the sidebar
-    2. App chunks + embeds them into ChromaDB (shown with a progress bar)
-    3. User asks questions in the main chat window
-    4. Agent answers with inline citations [Source: X | Page: N]
-    5. "New Conversation" button resets thread_id (clears memory)
-"""
 
 import streamlit as st
 import uuid
