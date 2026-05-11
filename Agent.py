@@ -233,37 +233,41 @@ Route:"""
     # ── Node 5: tool_node
     def tool_node(state: KnowBotState) -> dict:
         try:
-            q_emb   = embedder.encode(["title authors abstract year"]).tolist()
-            results = collection.query(query_embeddings=q_emb, n_results=6)
+            
+            results = collection.get(
+                where={"page": 1},
+                include=["documents", "metadatas"]
+            )
 
-            docs  = results["documents"][0]
-            metas = results["metadatas"][0]
+            docs  = results.get("documents", [])
+            metas = results.get("metadatas", [])
 
-            # prefer page 1 chunks — most likely to contain metadata
+            # fallback: if no page-1 chunks found, grab the first 3 chunks overall
+            if not docs:
+                fallback = collection.get(limit=3, include=["documents", "metadatas"])
+                docs  = fallback.get("documents", [])
+                metas = fallback.get("metadatas", [])
+
+            if not docs:
+                return {"tool_result": "No paper content found in the knowledge base."}
+
             header_chunks = [
                 f"[{meta['source']}]\n{doc}"
                 for doc, meta in zip(docs, metas)
-                if meta["page"] == 1
             ]
-            if not header_chunks:
-                header_chunks = [
-                    f"[{meta['source']}]\n{doc}"
-                    for doc, meta in zip(docs[:2], metas[:2])
-                ]
-
             context = "\n\n".join(header_chunks)
 
             prompt = f"""Extract metadata from the research paper text below.
-Use ONLY the provided text. If information is not present, say 'not found in document'.
+    Use ONLY the provided text. If information is not present, say 'not found in document'.
 
-Paper text:
-{context}
+    Paper text:
+    {context}
 
-Question: {state["question"]}
-Answer:"""
+    Question: {state["question"]}
+    Answer:"""
 
             response = llm.invoke([HumanMessage(content=prompt)])
-            print("  [tool] metadata extracted")
+            print("  [tool] metadata extracted via page-1 filter")
             return {"tool_result": response.content.strip()}
 
         except Exception as e:
